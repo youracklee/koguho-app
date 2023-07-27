@@ -4,8 +4,7 @@ class Person {
   late String _barcode;
   late String _gender;
   late String _birth;
-  bool _shotToday = false;
-  String _recentShotDate = " ";
+  bool _shot_today = false;
 
   Person(this._name, this._barcode, this._gender, this._birth);
 
@@ -14,7 +13,6 @@ class Person {
     _barcode = info['barcode'] ?? " ";
     _gender = info['gender'] ?? " ";
     _birth = info['birth'] ?? " ";
-    _recentShotDate = info['recentShotDate'] ?? " ";
   }
 
   Map<String, dynamic> toJson() {
@@ -22,8 +20,7 @@ class Person {
       'name' : _name,
       'barcode' : _barcode,
       'gender' : _gender,
-      'birth' : _birth,
-      'recentShotDate' : _recentShotDate
+      'birth' : _birth
     };
   }
 
@@ -56,20 +53,9 @@ class Person {
     _name = value;
   }
 
-  bool get shotToday => _shotToday;
+  bool get shot_today => _shot_today;
 
-  set shotToday(bool value) {
-    _shotToday = value;
-  }
-
-  String get recentShotDate => _recentShotDate;
-
-  set recentShotDate(String value) {
-    _recentShotDate = value;
-  }
-
-  bool shot() {
-    DateTime now = DateTime.now();
-    return _recentShotDate == DateTime(now.year, now.month, now.day).toString().split(" ")[0];
+  set shot_today(bool value) {
+    _shot_today = value;
   }
 }
