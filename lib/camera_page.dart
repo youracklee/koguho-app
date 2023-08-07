@@ -255,8 +255,8 @@ class TakePictureScreenState extends State<TakePictureScreen> {
     // 카메라 컨트롤러 초기화
     time = TIMER_MAX;
     _controller = widget.controller;
-    timer();
-    // faceDetection();
+    // timer();
+    faceDetection();
   }
 
 
@@ -295,8 +295,8 @@ class TakePictureScreenState extends State<TakePictureScreen> {
           oneSec,
               (_) {
             if (time == 0 && !canStartImageStream) {
-              takePicture();
-              // print("찰칵");
+              // takePicture();
+              print("찰칵");
               time = TIMER_MAX;
               canStartImageStream = true;
               getToast("촬영이 완료되었습니다.", size:50, gravity: ToastGravity.TOP, toastLength: Toast.LENGTH_LONG);
@@ -349,33 +349,25 @@ class TakePictureScreenState extends State<TakePictureScreen> {
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
     final h = MediaQuery.of(context).size.height;
-    // final name = getPatientsName(widget.barcode);
     final name = widget.helper.getPersonName(widget.barcode);
-
     return CupertinoPageScaffold(
         navigationBar: CupertinoNavigationBar(
             middle: Text('$name님')),
         child: Stack(
             children: [
               SizedBox(
-                width: w, height: h,
-                child: Image.asset("assets/img/img$num.png")
-                // child: CameraPreview(_controller),
+                  width: w, height: h,
+                  child: CameraPreview(_controller)
               ),
               Column(
-                  children: const [
-                    SizedBox(
+                  children: [
+                    const SizedBox(
                       width: 200, height: 100,
                     ),
-                  ]),
-              Column(
-                children: [
-                  SizedBox(width: w * 0.3, height: h / 1.3),
-                  SizedBox(
-                    width: w / 5, height: h / 5,
-                    child: CameraPreview(_controller)
-                  )])
-            ]));
+                    SizedBox(
+                        width: 200, height: 200,
+                        child: Text(time.toString(), style: DEFAULT_TEXTSTYLE)
+                    )])]));
   }
 }
 
@@ -433,4 +425,95 @@ Uint8List getBytes(CameraImage image) {
 class AlwaysDisabledFocusNode extends FocusNode {
   @override
   bool get hasFocus => false;
+}
+
+
+
+
+class TakePictureTestScreen extends StatefulWidget {
+  final CameraController controller;
+
+  const TakePictureTestScreen({
+    Key? key,
+    required this.controller,
+  }) : super(key: key);
+
+  @override
+  TakePictureTestScreenState createState() => TakePictureTestScreenState();
+}
+
+class TakePictureTestScreenState extends State<TakePictureTestScreen> {
+  late CameraController _controller;
+  late int time;
+  final int num = Random().nextInt(NUM_OF_IMAGES) + 1;
+  bool isDisposed = false;
+
+  String imagePath(String barcode, String name) {
+    var newFileName = "$name-${barcode}_${nowString()}.png";
+    return newFileName;
+  }
+
+
+  @override
+  void initState() {
+    super.initState();
+    // 카메라 컨트롤러 초기화
+    time = TIMER_MAX;
+    _controller = widget.controller;
+    // timer();
+    faceDetection();
+  }
+
+
+  void faceDetection() async {
+    final options = FaceDetectorOptions();
+    final faceDetector = FaceDetector(options: options);
+    bool detected = false;
+
+    _controller.startImageStream((CameraImage image) async {
+      InputImageData iid = getIID(image);
+      Uint8List bytes = getBytes(image);
+
+      final InputImage inputImage = InputImage.fromBytes(bytes: bytes, inputImageData: iid);
+      faceDetector.processImage(inputImage).then((List<Face> faces) {
+        for (Face face in faces) {
+          print(face.landmarks.toString());
+          canStartImageStream = true;
+          // if (!mounted) return;
+          // Navigator.pop(context);
+          // return;
+        }});
+    });
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    canStartImageStream = true;
+    isDisposed = true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    final h = MediaQuery.of(context).size.height;
+    return CupertinoPageScaffold(
+        navigationBar: const CupertinoNavigationBar(
+            middle: Text('님')),
+        child: Stack(
+            children: [
+              SizedBox(
+                  width: w, height: h,
+                  child: CameraPreview(_controller)
+              ),
+              Column(
+                  children: [
+                    const SizedBox(
+                      width: 200, height: 100,
+                    ),
+                    SizedBox(
+                        width: 200, height: 200,
+                        child: Text(time.toString(), style: DEFAULT_TEXTSTYLE)
+                    )])]));
+  }
 }
