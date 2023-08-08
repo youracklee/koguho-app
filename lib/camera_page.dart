@@ -49,10 +49,28 @@ class _CameraPageState extends State<CameraPage> {
       }
     }
   }
+  Future<void> barcodeScanAndNavigate(Barcode barcode) async {
+    final bar = barcode.rawValue.toString();
+    if (widget.helper.contains(bar) && !canStartImageStream) {
+      await _controller.stopImageStream();
+      if (!mounted) return;
+      Navigator.push(
+          context,
+          CupertinoPageRoute(
+              builder: (context) => TakePictureScreen(
+                controller: _controller,
+                barcode: bar,
+                helper: widget.helper,
+              )));
+    } else {
+      getToast("등록되지 않은 바코드입니다.");
+      setState(() {});
+    }
+  }
 
   void barcodeProcess() async {
     canStartImageStream = false;
-    int barcodeCounts = BARCODE_COUNTS; //너무 빨리 찍히는 거 방지
+    int barcodeCounts = BARCODE_COUNTS; // 너무 빨리 찍히는 거 방지
     await _controller.startImageStream((CameraImage image) async {
       InputImageData iid = getIID(image);
       Uint8List bytes = getBytes(image);
@@ -68,24 +86,10 @@ class _CameraPageState extends State<CameraPage> {
         } else {
           if (barcodes.isNotEmpty) {
             barcodeCounts = BARCODE_COUNTS;
-            final bar = barcodes[0].rawValue.toString();
-            if (widget.helper.contains(bar) && !canStartImageStream) {
-            // if (await isContains(bar) && !canStartImageStream) {
-              _controller.stopImageStream();
-              if (!mounted) return;
-              Navigator.push(
-                  context,
-                  CupertinoPageRoute(
-                      builder: (context) => TakePictureScreen(
-                        controller: _controller,
-                        barcode: bar,
-                        helper: widget.helper,
-                      )));
-            } else {
-              getToast("등록되지 않은 바코드입니다.");
-              setState(() {});
-            }
-          }}});
+            await barcodeScanAndNavigate(barcodes[0]);
+          }
+        }
+      });
     });
   }
 
@@ -148,7 +152,6 @@ class _CameraPageState extends State<CameraPage> {
                     // if (bar.length != 8) {}
                     if (widget.helper.contains(bar) && !canStartImageStream) {
                     // if (await isContains(bar) && !canStartImageStream) {
-                      _controller.stopImageStream();
                       if (!mounted) return;
                       Navigator.push(
                           context,
@@ -231,6 +234,7 @@ class TakePictureScreenState extends State<TakePictureScreen> {
   late int time;
   final int num = Random().nextInt(NUM_OF_IMAGES) + 1;
   bool isDisposed = false;
+  bool isLoading = true;
 
   String imagePath(String barcode, String name) {
     var newFileName = "$name-${barcode}_${nowString()}.png";
@@ -256,14 +260,24 @@ class TakePictureScreenState extends State<TakePictureScreen> {
     time = TIMER_MAX;
     _controller = widget.controller;
     // timer();
-    faceDetection();
+    _controller.initialize().then((_) => faceDetection());
   }
 
-
   void faceDetection() async {
-    final options = FaceDetectorOptions();
+    setState(() {
+      isLoading = false;
+    });
+    getToast(
+      "정면을 똑바로 응시하면, 촬영이 시작됩니다."
+    );
+    canStartImageStream = false;
+    final options = FaceDetectorOptions(
+      enableClassification: true,
+      enableLandmarks: true,
+      enableTracking: true
+    );
     final faceDetector = FaceDetector(options: options);
-    bool detected = false;
+    _controller.stopImageStream();
 
     _controller.startImageStream((CameraImage image) async {
       InputImageData iid = getIID(image);
@@ -271,14 +285,54 @@ class TakePictureScreenState extends State<TakePictureScreen> {
 
       final InputImage inputImage = InputImage.fromBytes(bytes: bytes, inputImageData: iid);
       faceDetector.processImage(inputImage).then((List<Face> faces) {
-        for (Face face in faces) {
-          // print(face.landmarks.toString());
-          canStartImageStream = true;
-          if (!mounted) return;
-          Navigator.pop(context);
-          return;
-        }});
+        if (faces.length == 1) {
+          Face face = faces[0];
+
+          if (isFaceForward(face)) {
+            debugPrint("${face.trackingId}: ${face.leftEyeOpenProbability}, ${face.rightEyeOpenProbability}");
+            faceDetector.close();
+            timer();
+
+          } else {
+            getToast("정면을 똑바로 응시해주세요.");
+          }
+
+        } else if (faces.isNotEmpty) {
+          getToast(
+            "화면에 한 명만 들어와야 합니다.\n현재 ${faces.length} 인식"
+          );
+        }
+      });
     });
+  }
+
+  bool isFaceForward(Face face) {
+    var x = face.headEulerAngleX!;
+    var y = face.headEulerAngleY!;
+    var z = face.headEulerAngleZ!;
+    return accept(x) && accept(y) && accept(z);
+    // return accept(x, lm:"고개를 오른쪽으로 돌리세요.", rm:"고개를 왼쪽으로 돌리세요.") &&
+    //     accept(y, lm:"고개를 아래로 내리세요.", rm:"고개를 위로 올리세요.") &&
+    //     accept(z, lm:"오른쪽으로 기울었습니다.", rm:"왼쪽으로 기울었습니다.");
+  }
+
+  bool accept(double d,
+      {String lm = "", String rm = ""}
+      ) {
+    if (d.abs() <= ANGLE_LIMIT) {
+      return true;
+    }
+    if (d < -ANGLE_LIMIT) {
+      if (lm.isNotEmpty) {
+        getToast(lm, toastLength: Toast.LENGTH_SHORT);
+      }
+      return false;
+    } else {
+      if (rm.isNotEmpty) {
+        getToast(rm);
+      }
+      return false;
+    }
   }
 
   void timer() {
@@ -342,6 +396,7 @@ class TakePictureScreenState extends State<TakePictureScreen> {
   void dispose() {
     super.dispose();
     canStartImageStream = true;
+    _controller.stopImageStream();
     isDisposed = true;
   }
 
@@ -357,7 +412,8 @@ class TakePictureScreenState extends State<TakePictureScreen> {
             children: [
               SizedBox(
                   width: w, height: h,
-                  child: CameraPreview(_controller)
+                  child: isLoading ?
+                    const CupertinoActivityIndicator(): CameraPreview(_controller)
               ),
               Column(
                   children: [
@@ -425,95 +481,4 @@ Uint8List getBytes(CameraImage image) {
 class AlwaysDisabledFocusNode extends FocusNode {
   @override
   bool get hasFocus => false;
-}
-
-
-
-
-class TakePictureTestScreen extends StatefulWidget {
-  final CameraController controller;
-
-  const TakePictureTestScreen({
-    Key? key,
-    required this.controller,
-  }) : super(key: key);
-
-  @override
-  TakePictureTestScreenState createState() => TakePictureTestScreenState();
-}
-
-class TakePictureTestScreenState extends State<TakePictureTestScreen> {
-  late CameraController _controller;
-  late int time;
-  final int num = Random().nextInt(NUM_OF_IMAGES) + 1;
-  bool isDisposed = false;
-
-  String imagePath(String barcode, String name) {
-    var newFileName = "$name-${barcode}_${nowString()}.png";
-    return newFileName;
-  }
-
-
-  @override
-  void initState() {
-    super.initState();
-    // 카메라 컨트롤러 초기화
-    time = TIMER_MAX;
-    _controller = widget.controller;
-    // timer();
-    faceDetection();
-  }
-
-
-  void faceDetection() async {
-    final options = FaceDetectorOptions();
-    final faceDetector = FaceDetector(options: options);
-    bool detected = false;
-
-    _controller.startImageStream((CameraImage image) async {
-      InputImageData iid = getIID(image);
-      Uint8List bytes = getBytes(image);
-
-      final InputImage inputImage = InputImage.fromBytes(bytes: bytes, inputImageData: iid);
-      faceDetector.processImage(inputImage).then((List<Face> faces) {
-        for (Face face in faces) {
-          print(face.landmarks.toString());
-          canStartImageStream = true;
-          // if (!mounted) return;
-          // Navigator.pop(context);
-          // return;
-        }});
-    });
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    canStartImageStream = true;
-    isDisposed = true;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final w = MediaQuery.of(context).size.width;
-    final h = MediaQuery.of(context).size.height;
-    return CupertinoPageScaffold(
-        navigationBar: const CupertinoNavigationBar(
-            middle: Text('님')),
-        child: Stack(
-            children: [
-              SizedBox(
-                  width: w, height: h,
-                  child: CameraPreview(_controller)
-              ),
-              Column(
-                  children: [
-                    const SizedBox(
-                      width: 200, height: 100,
-                    ),
-                    SizedBox(
-                        width: 200, height: 200,
-                        child: Text(time.toString(), style: DEFAULT_TEXTSTYLE)
-                    )])]));
-  }
 }
