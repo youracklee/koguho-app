@@ -55,13 +55,8 @@ class _CameraPageState extends State<CameraPage> {
       await _controller.stopImageStream();
       if (!mounted) return;
       Navigator.push(
-          context,
-          CupertinoPageRoute(
-              builder: (context) => TakePictureScreen(
-                controller: _controller,
-                barcode: bar,
-                helper: widget.helper,
-              )));
+        context, takePictureScreen(bar)
+      );
     } else {
       getToast("등록되지 않은 바코드입니다.");
       setState(() {});
@@ -75,7 +70,7 @@ class _CameraPageState extends State<CameraPage> {
       InputImageData iid = getIID(image);
       Uint8List bytes = getBytes(image);
       if (pageIndex == 1 || pageIndex == 2) {
-        _controller.stopImageStream();
+        await _controller.stopImageStream();
         canStartImageStream = true;
       }
 
@@ -120,13 +115,39 @@ class _CameraPageState extends State<CameraPage> {
     super.dispose();
   }
 
-  void rebuildAllChildren(BuildContext context) {
-    debugPrint("rebuild");
-    void rebuild(Element el) {
-      el.markNeedsBuild();
-      el.visitChildren(rebuild);
+  CupertinoPageRoute takePictureScreen(String bar) {
+    return CupertinoPageRoute(
+          builder: (context) => TakePictureScreen(
+            controller: _controller,
+            barcode: bar,
+            helper: widget.helper,
+          ));
+  }
+
+  Future<void> pyshicsScanner(String bar)  async {
+    await _controller.stopImageStream();
+    if (widget.helper.contains(bar) && !canStartImageStream) {
+      // if (await isContains(bar) && !canStartImageStream) {
+      if (!mounted) return;
+      Navigator.push(
+          context, takePictureScreen(bar)
+      );
+      _textStream.clear();
+    } else {
+      if (bar.length == 8) {
+        getToast("등록되지 않은 바코드입니다.");
+        if (!mounted) return;
+        Navigator.push(
+            context,
+            CupertinoPageRoute(
+                builder: (context) => const Dummy()
+            )
+        );
+        setState(() {
+          _textStream.clear();
+        });
+      }
     }
-    (context as Element).visitChildren(rebuild);
   }
 
   @override
@@ -148,38 +169,8 @@ class _CameraPageState extends State<CameraPage> {
                   autocorrect: false,
                   enableSuggestions: false,
                   keyboardType: TextInputType.none,
-                  onChanged: (bar) async {
-                    // if (bar.length != 8) {}
-                    if (widget.helper.contains(bar) && !canStartImageStream) {
-                    // if (await isContains(bar) && !canStartImageStream) {
-                      if (!mounted) return;
-                      Navigator.push(
-                          context,
-                          CupertinoPageRoute(
-                              builder: (context) => TakePictureScreen(
-                                controller: _controller,
-                                barcode: bar,
-                                helper: widget.helper,
-                              )));
-                      _textStream.clear();
-                    } else {
-                      if (bar.length == 8) {
-                        getToast("등록되지 않은 바코드입니다.");
-                        if (!mounted) return;
-                        Navigator.push(
-                          context,
-                          CupertinoPageRoute(
-                            builder: (context) => const Dummy()
-                          )
-                        );
-                        setState(() {
-                          _textStream.clear();
-                        });
-                        // rebuildAllChildren(context);
-                      }
-                    }
-                  },
-                  controller: _textStream,
+                  onChanged: (bar) => pyshicsScanner(bar),
+                  controller: _textStream
                 ),
                 SizedBox(
                     height: h, width: w,
@@ -277,19 +268,25 @@ class TakePictureScreenState extends State<TakePictureScreen> {
       enableTracking: true
     );
     final faceDetector = FaceDetector(options: options);
-    _controller.stopImageStream();
 
     _controller.startImageStream((CameraImage image) async {
       InputImageData iid = getIID(image);
       Uint8List bytes = getBytes(image);
 
       final InputImage inputImage = InputImage.fromBytes(bytes: bytes, inputImageData: iid);
-      faceDetector.processImage(inputImage).then((List<Face> faces) {
+      faceDetector.processImage(inputImage).then((List<Face> faces) async {
         if (faces.length == 1) {
           Face face = faces[0];
-
-          if (isFaceForward(face)) {
-            debugPrint("${face.trackingId}: ${face.leftEyeOpenProbability}, ${face.rightEyeOpenProbability}");
+          /**
+           * TODO:
+           * 1. 정면을 응시했을 때, 그리고 눈을 제대로 떴을 때, 사진찍는 로직 동작
+           * 2. 최소 몇 초 동안, 정면을 응시해야 촬영되도록 바로 아래를 수정해야됨
+           *
+           * ...
+           * n. 고개를 어디로 돌려야 하는지, 올려야 하는지 내려야하는지, 어디로 기울여야 하는지 안내문구 (하나씩만 나오게)
+           */
+          if (isReadyForShot(face)) {
+            await _controller.stopImageStream();
             faceDetector.close();
             timer();
 
@@ -304,6 +301,16 @@ class TakePictureScreenState extends State<TakePictureScreen> {
         }
       });
     });
+  }
+
+  bool isReadyForShot(Face face) {
+    return isFaceForward(face) && isOpenEyes(face);
+  }
+
+  bool isOpenEyes(Face face) {
+    if (face.rightEyeOpenProbability! > 0.3 && face.leftEyeOpenProbability! > 0.3) return true;
+    getToast("눈을 떠주세요.");
+    return false;
   }
 
   bool isFaceForward(Face face) {
@@ -349,8 +356,8 @@ class TakePictureScreenState extends State<TakePictureScreen> {
           oneSec,
               (_) {
             if (time == 0 && !canStartImageStream) {
-              // takePicture();
-              print("찰칵");
+              takePicture();
+              // debugPrint("찰칵");
               time = TIMER_MAX;
               canStartImageStream = true;
               getToast("촬영이 완료되었습니다.", size:50, gravity: ToastGravity.TOP, toastLength: Toast.LENGTH_LONG);
@@ -396,7 +403,6 @@ class TakePictureScreenState extends State<TakePictureScreen> {
   void dispose() {
     super.dispose();
     canStartImageStream = true;
-    _controller.stopImageStream();
     isDisposed = true;
   }
 
