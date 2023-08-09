@@ -125,9 +125,9 @@ class _CameraPageState extends State<CameraPage> {
   }
 
   Future<void> pyshicsScanner(String bar)  async {
-    await _controller.stopImageStream();
     if (widget.helper.contains(bar) && !canStartImageStream) {
       // if (await isContains(bar) && !canStartImageStream) {
+      await  _controller.stopImageStream();
       if (!mounted) return;
       Navigator.push(
           context, takePictureScreen(bar)
