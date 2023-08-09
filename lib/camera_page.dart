@@ -250,7 +250,6 @@ class TakePictureScreenState extends State<TakePictureScreen> {
     // 카메라 컨트롤러 초기화
     time = TIMER_MAX;
     _controller = widget.controller;
-    // timer();
     _controller.initialize().then((_) => faceDetection());
   }
 
@@ -348,43 +347,6 @@ class TakePictureScreenState extends State<TakePictureScreen> {
         getToast(rm);
       }
       return false;
-    }
-  }
-
-  void timer() {
-    const oneSec = Duration(seconds: 1);
-    getToast(
-      "촬영이 시작되었습니다. 얼굴 전체가 나올 수 있도록, 정면을 응시해주시길 바랍니다.",
-      size:40,
-      gravity: ToastGravity.CENTER,
-      textColor: PHOTO_NOTICE_TEXT_COLOR,
-      backgroundColor: PHOTO_NOTICE_BACKGROUND_COLOR,
-    );
-    if (!isDisposed) {
-      Timer.periodic(
-          oneSec,
-              (_) {
-            if (time == 0 && !canStartImageStream) {
-              takePicture();
-              // debugPrint("찰칵");
-              time = TIMER_MAX;
-              canStartImageStream = true;
-              getToast("촬영이 완료되었습니다.", size:50, gravity: ToastGravity.TOP, toastLength: Toast.LENGTH_LONG);
-
-              if (!mounted) return;
-              Navigator.of(context).pop();
-              return;
-            } else if (time > 0) {
-              if (mounted){
-                getToast(
-                  time.toString(), size:100, gravity: ToastGravity.TOP,
-                  textColor: PHOTO_NOTICE_TEXT_COLOR,
-                  backgroundColor: PHOTO_NOTICE_BACKGROUND_COLOR
-                );
-                setState(() {
-                  time--;
-                });
-              }}});
     }
   }
 
