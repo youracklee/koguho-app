@@ -268,6 +268,7 @@ class TakePictureScreenState extends State<TakePictureScreen> {
       enableTracking: true
     );
     final faceDetector = FaceDetector(options: options);
+    var cnt = 0;
 
     _controller.startImageStream((CameraImage image) async {
       InputImageData iid = getIID(image);
@@ -279,19 +280,27 @@ class TakePictureScreenState extends State<TakePictureScreen> {
           Face face = faces[0];
           /**
            * TODO:
-           * 1. 정면을 응시했을 때, 그리고 눈을 제대로 떴을 때, 사진찍는 로직 동작
-           * 2. 최소 몇 초 동안, 정면을 응시해야 촬영되도록 바로 아래를 수정해야됨
-           *
-           * ...
            * n. 고개를 어디로 돌려야 하는지, 올려야 하는지 내려야하는지, 어디로 기울여야 하는지 안내문구 (하나씩만 나오게)
            */
           if (isReadyForShot(face)) {
-            await _controller.stopImageStream();
-            faceDetector.close();
-            timer();
+            cnt++;
+            if (cnt > 50) {
+              await _controller.stopImageStream();
+              faceDetector.close();
+              // takePicture();
+              getToast("촬영이 완료되었습니다.", size:50, gravity: ToastGravity.TOP, toastLength: Toast.LENGTH_LONG);
 
+              if (!mounted) return;
+              Navigator.of(context).pop();
+            } else {
+              getToast(
+                "곧 촬영이 시작됩니다. 눈을 뜨고 약 1초가 기다려주세요.",
+                gravity: ToastGravity.CENTER
+              );
+            }
           } else {
             getToast("정면을 똑바로 응시해주세요.");
+            cnt = 0;
           }
 
         } else if (faces.isNotEmpty) {
@@ -309,7 +318,7 @@ class TakePictureScreenState extends State<TakePictureScreen> {
 
   bool isOpenEyes(Face face) {
     if (face.rightEyeOpenProbability! > 0.3 && face.leftEyeOpenProbability! > 0.3) return true;
-    getToast("눈을 떠주세요.");
+    getToast("눈을 떠주세요.", gravity: ToastGravity.TOP);
     return false;
   }
 
@@ -364,7 +373,6 @@ class TakePictureScreenState extends State<TakePictureScreen> {
 
               if (!mounted) return;
               Navigator.of(context).pop();
-              // dispose();
               return;
             } else if (time > 0) {
               if (mounted){
