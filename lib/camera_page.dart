@@ -286,7 +286,7 @@ class TakePictureScreenState extends State<TakePictureScreen> {
             if (cnt > 50) {
               await _controller.stopImageStream();
               faceDetector.close();
-              // takePicture();
+              takePicture();
               getToast("촬영이 완료되었습니다.", size:50, gravity: ToastGravity.TOP, toastLength: Toast.LENGTH_LONG);
 
               if (!mounted) return;
@@ -390,16 +390,7 @@ class TakePictureScreenState extends State<TakePictureScreen> {
                   width: w, height: h,
                   child: isLoading ?
                     const CupertinoActivityIndicator(): CameraPreview(_controller)
-              ),
-              Column(
-                  children: [
-                    const SizedBox(
-                      width: 200, height: 100,
-                    ),
-                    SizedBox(
-                        width: 200, height: 200,
-                        child: Text(time.toString(), style: DEFAULT_TEXTSTYLE)
-                    )])]));
+              )]));
   }
 }
 
