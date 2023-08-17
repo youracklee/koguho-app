@@ -1,7 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:ediya/camera_page.dart';
 import 'package:ediya/set_data.dart';
-import 'package:ediya/sp_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:ediya/list_page.dart';
@@ -49,8 +48,6 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> {
-
-  final SPHelper helper = SPHelper();
   final CupertinoTabController _controller = CupertinoTabController();
 
   final List<BottomNavigationBarItem> items = [
@@ -61,7 +58,6 @@ class _MainPageState extends State<MainPage> {
 
   @override
   void initState() {
-    helper.init();
     super.initState();
   }
 
@@ -74,11 +70,11 @@ class _MainPageState extends State<MainPage> {
         pageIndex = _controller.index;
         switch(index) {
           case 1:
-            return SetData(helper);
+            return const SetData();
           case 2:
-            return ListPage(helper);
+            return const ListPage();
           default:
-            return CameraPage(widget.camera, helper);
+            return CameraPage(widget.camera);
         }
       },
     );

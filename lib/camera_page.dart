@@ -1,9 +1,7 @@
 import 'package:ediya/main.dart';
-import 'package:ediya/person.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 import 'constant.dart';
-import 'sp_helper.dart';
 import 'util.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:path_provider/path_provider.dart';
@@ -14,17 +12,15 @@ import 'package:camera/camera.dart';
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'dart:math';
 import 'api_util.dart';
 
 bool canStartImageStream = true;
 
 class CameraPage extends StatefulWidget {
-  final SPHelper helper;
   final CameraDescription camera;
 
-  const CameraPage(this.camera, this.helper, {super.key});
+  const CameraPage(this.camera, {super.key});
 
   @override
   State<CameraPage> createState() => _CameraPageState();
@@ -81,6 +77,7 @@ class _CameraPageState extends State<CameraPage> {
         } else {
           if (barcodes.isNotEmpty) {
             barcodeCounts = BARCODE_COUNTS;
+
             await barcodeScanAndNavigate(barcodes[0]);
           }
         }
@@ -89,8 +86,7 @@ class _CameraPageState extends State<CameraPage> {
   }
 
   void _toastTextEdit() {
-    // getToast(_textStream.text);
-    debugPrint(_textStream.text);
+    //
   }
 
   @override
@@ -114,6 +110,7 @@ class _CameraPageState extends State<CameraPage> {
     _barcodeScanner.close();
     super.dispose();
   }
+
 
   CupertinoPageRoute takePictureScreen(String bar) {
     return CupertinoPageRoute(
@@ -169,6 +166,7 @@ class _CameraPageState extends State<CameraPage> {
                   autocorrect: false,
                   enableSuggestions: false,
                   keyboardType: TextInputType.none,
+
                   onChanged: (bar) => pyshicsScanner(bar),
                   controller: _textStream
                 ),
@@ -206,14 +204,14 @@ class _CameraPageState extends State<CameraPage> {
 
 class TakePictureScreen extends StatefulWidget {
   final CameraController controller;
-  final SPHelper helper;
   final String barcode;
+  final String name;
 
   const TakePictureScreen({
     Key? key,
     required this.controller,
     required this.barcode,
-    required this.helper,
+    required this.name,
   }) : super(key: key);
 
   @override
@@ -234,14 +232,12 @@ class TakePictureScreenState extends State<TakePictureScreen> {
 
   Future<void> saveImagePath(XFile? tempImage) async {
     if (tempImage == null) return;
-    // String name = await getPatientsName(widget.barcode);
-    String name = widget.helper.getPersonName(widget.barcode);
     String dir = (await getApplicationDocumentsDirectory()).path;
-    String newPath = join(dir, imagePath(widget.barcode, name));
+    String newPath = join(dir, imagePath(widget.barcode, widget.name));
 
     File temp = await File(tempImage.path).copy(newPath);
-    GallerySaver.saveImage(temp.path, albumName: name);
-    // await uploadImage(temp);
+    GallerySaver.saveImage(temp.path, albumName: widget.name);
+    await uploadImage(temp);
   }
 
   @override
@@ -250,6 +246,7 @@ class TakePictureScreenState extends State<TakePictureScreen> {
     // 카메라 컨트롤러 초기화
     time = TIMER_MAX;
     _controller = widget.controller;
+
     _controller.initialize().then((_) => faceDetection());
   }
 
@@ -286,11 +283,13 @@ class TakePictureScreenState extends State<TakePictureScreen> {
             if (cnt > 50) {
               await _controller.stopImageStream();
               faceDetector.close();
-              // takePicture();
+              takePicture();
+
               getToast("촬영이 완료되었습니다.", size:50, gravity: ToastGravity.TOP, toastLength: Toast.LENGTH_LONG);
 
               if (!mounted) return;
               Navigator.of(context).pop();
+
             } else {
               getToast(
                 "곧 촬영이 시작됩니다. 눈을 뜨고 약 1초가 기다려주세요.",
@@ -354,13 +353,6 @@ class TakePictureScreenState extends State<TakePictureScreen> {
     try {
       // 사진 찍기
       final image = await _controller.takePicture();
-      Person tp = widget.helper.getPersonInfo(widget.barcode);
-
-      DateTime now = DateTime.now();
-      String date = DateTime(now.year, now.month, now.day).toString().split(" ")[0];
-
-      tp.recentShotDate = date;
-      widget.helper.writeInfo(widget.barcode, tp);
       // 찍은 사진을 저장하기 위한 경로 생성
       saveImagePath(image);
     } catch (e) {
@@ -380,13 +372,15 @@ class TakePictureScreenState extends State<TakePictureScreen> {
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
     final h = MediaQuery.of(context).size.height;
+
     final name = widget.helper.getPersonName(widget.barcode);
     return CupertinoPageScaffold(
         navigationBar: CupertinoNavigationBar(
-            middle: Text('$name님')),
+            middle: Text('${widget.name}님')),
         child: Stack(
             children: [
               SizedBox(
+
                   width: w, height: h,
                   child: isLoading ?
                     const CupertinoActivityIndicator(): CameraPreview(_controller)
@@ -452,9 +446,4 @@ Uint8List getBytes(CameraImage image) {
   return Uint8List.fromList(
       image.planes.fold(<int>[], (List<int> previousValue, element) => previousValue
         ..addAll(element.bytes)));
-}
-
-class AlwaysDisabledFocusNode extends FocusNode {
-  @override
-  bool get hasFocus => false;
 }

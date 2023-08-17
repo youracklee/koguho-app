@@ -3,13 +3,10 @@ import 'util.dart';
 import 'package:flutter/material.dart';
 import 'person.dart';
 import 'package:flutter/cupertino.dart';
-import 'sp_helper.dart';
 import 'api_util.dart';
 
 class ListPage extends StatefulWidget {
-  final SPHelper helper;
-
-  const ListPage(this.helper, {super.key});
+  const ListPage({super.key});
   @override
   State<ListPage> createState() => _ListPageState();
 }
@@ -30,9 +27,7 @@ class _ListPageState extends State<ListPage> {
   List<Widget> getContent() {
     List<Widget> tiles = [];
     for (var person in dataList) {
-      // Color c = person.shot_today ? SHOT_LIST_TILE_COLOR : DEFAULT_LIST_TILE_COLOR;
-      Color c = person.shot() ? SHOT_LIST_TILE_COLOR : DEFAULT_LIST_TILE_COLOR;
-
+      Color c = person.shot_today ? SHOT_LIST_TILE_COLOR : DEFAULT_LIST_TILE_COLOR;
       tiles.add(
           CupertinoListTile(
             title: Text(person.name),
@@ -42,7 +37,7 @@ class _ListPageState extends State<ListPage> {
               Navigator.push(
                   context,
                   CupertinoPageRoute(
-                      builder: (context) => ListPageInfo(widget.helper, person)
+                      builder: (context) => ListPageInfo(person)
                   )
               ).then((value) {
                 setState(() {});
@@ -59,20 +54,20 @@ class _ListPageState extends State<ListPage> {
     return tiles;
   }
 
+
   Future<void> _refresh() async {
     setState(() {
       isLoading = true;
     });
     await Future.delayed(const Duration(milliseconds: 500));
-    var temp = widget.helper.getPeopleList();
-
+    var temp = await getPatientsList();
     setState(() {
       dataList = temp;
       isLoading = false;
     });
-    // for (Person p in dataList) {
-    //   p.shot_today = await shotToday(p.barcode);
-    // }
+    for (Person p in dataList) {
+      p.shot_today = await shotToday(p.barcode);
+    }
     dataList.sort((p1, p2) => p1.name.compareTo(p2.name));
     contents = getContent();
   }
@@ -119,9 +114,8 @@ class _ListPageState extends State<ListPage> {
 ///개개인의 환자 정보
 ///여기서 삭제 가능
 class ListPageInfo extends StatefulWidget {
-  final SPHelper helper;
   final Person person;
-  const ListPageInfo(this.helper, this.person, {super.key});
+  const ListPageInfo(this.person, {super.key});
 
   @override
   State<ListPageInfo> createState() => _ListPageInfoState();
@@ -179,8 +173,7 @@ class _ListPageInfoState extends State<ListPageInfo> {
                               ),
                               CupertinoButton(
                                   onPressed: () {
-                                    // deletePatients(widget.person.barcode);
-                                    widget.helper.removePerson(widget.person.barcode);
+                                    deletePatients(widget.person.barcode);
                                     getAlertDialog(context, "삭제되었습니다.").then(
                                       Navigator.of(context).pop
                                     ).then(Navigator.of(context).pop);
