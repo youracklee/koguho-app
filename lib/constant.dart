@@ -85,4 +85,6 @@ const int TIMER_MAX = 5;
 const int BARCODE_COUNTS = 100;
 const int NUM_OF_IMAGES = 6;
 const int DELAY_MILLI = 1500;
-const String ERROR_NAME = "^^%&%&%^***#@@!!@#";
+
+const double ANGLE_LIMIT = 10;
+const double OPEN_EYE_LIMIT = 0.3;
