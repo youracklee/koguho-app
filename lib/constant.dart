@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 
 ///IP address & Port
-const IP = "http://192.168.0.10";
+const IP = "http://192.168.0.45";
 const PORT = 8080;
 
 const SERVER_ADDRESS = "$IP:$PORT";
@@ -85,6 +85,5 @@ const int TIMER_MAX = 5;
 const int BARCODE_COUNTS = 100;
 const int NUM_OF_IMAGES = 6;
 const int DELAY_MILLI = 1500;
-
 const double ANGLE_LIMIT = 10;
 const double OPEN_EYE_LIMIT = 0.3;

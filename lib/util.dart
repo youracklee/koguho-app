@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:ediya/constant.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
@@ -8,11 +9,11 @@ Text getText(String string) {
 
 void getToast(String msg,
     {
-      ToastGravity gravity = ToastGravity.CENTER,
+      ToastGravity gravity = ToastGravity.BOTTOM,
       Color backgroundColor = TOAST_BACKGROUND_DEFAULT_COLOR,
       Color textColor = TOAST_TEXT_DEFAULT_COLOR,
-      double size = 40,
-      Toast toastLength = Toast.LENGTH_LONG
+      double size = 30,
+      Toast toastLength = Toast.LENGTH_SHORT
     }
     ) {
   Fluttertoast.showToast(

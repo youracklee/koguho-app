@@ -1,4 +1,7 @@
+import 'dart:ui';
+
 import 'package:ediya/constant.dart';
+import 'package:ediya/sp_helper.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'util.dart';
 import 'package:flutter/cupertino.dart';
@@ -9,7 +12,9 @@ import 'package:barcode_scan2/barcode_scan2.dart';
 import 'api_util.dart';
 
 class SetData extends StatefulWidget {
-  const SetData({super.key});
+  final SPHelper helper;
+
+  const SetData(this.helper, {super.key});
 
   @override
   State<SetData> createState() => _SetDataState();
@@ -204,13 +209,18 @@ class _SetDataState extends State<SetData> {
                         getAlertDialog(context, "성별을 고르세요!");
                       } else if (barcode == '') {
                         getAlertDialog(context, "바코드를 스캔/입력 하세요!");
-                        } else if (await isContains(barcode)) {
+                      } else if (widget.helper.contains(barcode)) {
+                        // } else if (await isContains(barcode)) {
                         getToast("이미 등록된 환자입니다!\n바코드를 다시 스캔해 주세요.",
                             gravity: ToastGravity.CENTER);
+                        // if (!mounted) return;
+                        // getAlertDialog(
+                        //     context, "이미 등록된 환자입니다!\n바코드를 다시 스캔해 주세요.");
                       } else {
                         Person person = Person(_nameController.text, barcode,
                             _gender, _birthDay.toString());
-                        addPatients(person);
+                        // addPatients(person);
+                        saveInfo(person);
                         getToast("등록이 완료되었습니다!");
                         setState(() {
                           initState();
@@ -225,5 +235,9 @@ class _SetDataState extends State<SetData> {
                 ])
               ])
             ])));
+  }
+
+  Future saveInfo(Person person) async {
+    widget.helper.writeInfo(barcode, person);
   }
 }

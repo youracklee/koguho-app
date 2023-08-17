@@ -8,81 +8,99 @@ import 'dart:async';
 import 'person.dart';
 import 'dart:convert';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'person.dart';
 
 const Duration duration = Duration(milliseconds: DELAY_MILLI);
 
+class Connection {
+  final ConnectionStatus cs;
+  final dynamic connectionResponse;
+
+  Connection(this.cs, this.connectionResponse);
+
+  ConnectionStatus get status => cs;
+  dynamic get response => connectionResponse;
+}
 
 //해당 API 주소 반환
 Uri getUrl(String path) {
   return Uri.parse('$SERVER_ADDRESS/$path');
 }
 
-dynamic getMessage(http.Response response) {
-  return jsonDecode(utf8.decode(response.bodyBytes))['msg'];
+// //response 메소드 decode
+// List<dynamic> getStatus(String responseCode) {
+//   bool success = responseCode.split('/')[0] == '1';
+//   String code = responseCode.split('/')[1];
+//   return [success, code];
+// }
+
+dynamic getMessage(http.StreamedResponse sr) async {
+  var response = await http.Response.fromStream(sr);
+  var msg = jsonDecode(utf8.decode(response.bodyBytes))['msg'];
+  return msg;
 }
 
 //이미지 업로드
-Future<void> uploadImage(File image) async {
+Future<Connection> uploadImage(File image) async {
   final url = getUrl('upload-image');
 
   try {
     var request = http.MultipartRequest('POST', url);
     request.files.add(await http.MultipartFile.fromPath('file', image.path));
+
     try {
-      await request.send().timeout(duration);
+      var response = await request.send().timeout(duration);
       getToast("이미지가 업로드 되었습니다.");
+      return Connection(ConnectionStatus.connected, getMessage(response));
     } on TimeoutException catch (_) {
-      getToast("서버연결 시간 초과");
+      getToast("서버 연결 실패");
+      return Connection(ConnectionStatus.failed, 'connection failed');
     } catch (e) {
       getToast("네트워크에 연결되지 않음");
+      return Connection(ConnectionStatus.offline, 'offline');
     }
   } catch (e) {
-    getToast("네트워크 유실");
+    debugPrint(e.toString());
+    return Connection(ConnectionStatus.error, 'error');
   }
 }
 
 //환자 등록
-Future<void> addPatients(Person person) async {
+Future<Connection> addPatients(Person person) async {
   String barcode = person.barcode;
   final url = getUrl('patients-info/$barcode');
   final send = json.encode(person.toJson());
   try {
-    await http.post(url, body: send).timeout(duration);
-    getToast("환자 등록이 완료되었습니다.");
+    var request = await http.post(url, body: send).timeout(duration);
+    return Connection(ConnectionStatus.connected, getMessage(request as http.StreamedResponse));
   } on TimeoutException catch (_) {
-    getToast("서버연결 시간 초과");
+    return Connection(ConnectionStatus.failed, "connection failed");
   } catch (_) {
-    getToast("네트워크 유실");
+
   }
+
+  return Connection(ConnectionStatus.error, "error");
 }
 
 //등록된 바코드인지 확인
 Future<bool> isContains(String barcode) async {
   final url = getUrl('patients-info/iscontains/$barcode');
+
   try {
-    var request = await http.get(url).timeout(duration);
+    var request = await http.get(url);
     return request.statusCode == 200;
-  } on TimeoutException catch(_) {
-    getToast("서버연결 시간 초과");
   } catch (e) {
-    getToast("네트워크 유실");
+    getToast("네트워크 유실", gravity: ToastGravity.CENTER);
+    return false;
   }
-  return false;
 }
 
 //환자 이름 불러오기
 Future<String> getPatientsName(barcode) async {
   final url = getUrl('patients-info/$barcode');
+  var request = await http.get(url);
 
-  try {
-    var request = await http.get(url).timeout(duration);
-    return getMessage(request).toString();
-  } on TimeoutException {
-    getToast("서버연결 시간 초과");
-  } catch (_) {
-    getToast("네트워크 유실");
-  }
-  return ERROR_NAME;
+  return getMessage(request as http.StreamedResponse).toString();
 }
 
 //환자 정보 불러오기
@@ -112,7 +130,7 @@ Future<bool> shotToday(String barcode) async {
 
   try {
     var request = await http.get(url);
-    return getMessage(request).toString() == "True";
+    return getMessage(request as http.StreamedResponse).toString() == "True";
   } catch (e) {
     debugPrint(e.toString());
     getToast("네트워크 유실");
