@@ -125,9 +125,9 @@ class _CameraPageState extends State<CameraPage> {
   }
 
   Future<void> pyshicsScanner(String bar)  async {
-    await _controller.stopImageStream();
     if (widget.helper.contains(bar) && !canStartImageStream) {
       // if (await isContains(bar) && !canStartImageStream) {
+      await _controller.stopImageStream();
       if (!mounted) return;
       Navigator.push(
           context, takePictureScreen(bar)
@@ -275,7 +275,7 @@ class TakePictureScreenState extends State<TakePictureScreen> {
 
       final InputImage inputImage = InputImage.fromBytes(bytes: bytes, inputImageData: iid);
       faceDetector.processImage(inputImage).then((List<Face> faces) async {
-        if (faces.length == 1) {
+        if (faces.isNotEmpty) {
           Face face = faces[0];
           /**
            * TODO:
@@ -286,15 +286,15 @@ class TakePictureScreenState extends State<TakePictureScreen> {
             if (cnt > 50) {
               await _controller.stopImageStream();
               faceDetector.close();
-              // takePicture();
+              takePicture();
               getToast("촬영이 완료되었습니다.", size:50, gravity: ToastGravity.TOP, toastLength: Toast.LENGTH_LONG);
 
               if (!mounted) return;
               Navigator.of(context).pop();
             } else {
               getToast(
-                "곧 촬영이 시작됩니다. 눈을 뜨고 약 1초가 기다려주세요.",
-                gravity: ToastGravity.CENTER
+                "곧 촬영이 시작됩니다. 눈을 뜨고 약 1초간 기다려주세요.",
+                gravity: ToastGravity.TOP
               );
             }
           } else {
@@ -302,21 +302,18 @@ class TakePictureScreenState extends State<TakePictureScreen> {
             cnt = 0;
           }
 
-        } else if (faces.isNotEmpty) {
-          getToast(
-            "화면에 한 명만 들어와야 합니다.\n현재 ${faces.length} 인식"
-          );
         }
       });
     });
   }
 
   bool isReadyForShot(Face face) {
-    return isFaceForward(face) && isOpenEyes(face);
+    // return isFaceForward(face) && isOpenEyes(face);
+    return isFaceForward(face);
   }
 
   bool isOpenEyes(Face face) {
-    if (face.rightEyeOpenProbability! > 0.3 && face.leftEyeOpenProbability! > 0.3) return true;
+    if (face.rightEyeOpenProbability! > 0.2 && face.leftEyeOpenProbability! > 0.2) return true;
     getToast("눈을 떠주세요.", gravity: ToastGravity.TOP);
     return false;
   }
@@ -390,23 +387,14 @@ class TakePictureScreenState extends State<TakePictureScreen> {
                   width: w, height: h,
                   child: isLoading ?
                     const CupertinoActivityIndicator(): CameraPreview(_controller)
-              ),
-              Column(
-                  children: [
-                    const SizedBox(
-                      width: 200, height: 100,
-                    ),
-                    SizedBox(
-                        width: 200, height: 200,
-                        child: Text(time.toString(), style: DEFAULT_TEXTSTYLE)
-                    )])]));
+              )]));
   }
 }
 
 InputImageData getIID(CameraImage image) {
   return InputImageData(
       inputImageFormat: InputImageFormatValue.fromRawValue(image.format.raw)!,
-      size: Size(image.width.toDouble(), image.height.toDouble() / 1.2),
+      size: Size(image.width.toDouble(), image.height.toDouble()),
       imageRotation: InputImageRotation.rotation0deg,
       planeData: image.planes.map((Plane plane) => InputImagePlaneMetadata(
         bytesPerRow: plane.bytesPerRow,
