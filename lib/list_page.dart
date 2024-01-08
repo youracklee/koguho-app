@@ -1,4 +1,4 @@
-import 'package:ediya/constant.dart';
+import 'package:koguho/constant.dart';
 import 'util.dart';
 import 'package:flutter/material.dart';
 import 'person.dart';

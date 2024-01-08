@@ -1,5 +1,5 @@
-import 'package:ediya/main.dart';
-import 'package:ediya/person.dart';
+import 'package:koguho/main.dart';
+import 'package:koguho/person.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 import 'constant.dart';

@@ -1,7 +1,7 @@
 import 'dart:ui';
 
-import 'package:ediya/constant.dart';
-import 'package:ediya/sp_helper.dart';
+import 'package:koguho/constant.dart';
+import 'package:koguho/sp_helper.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'util.dart';
 import 'package:flutter/cupertino.dart';

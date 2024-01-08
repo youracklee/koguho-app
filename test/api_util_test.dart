@@ -1,5 +1,5 @@
-import 'package:ediya/api_util.dart';
-import 'package:ediya/person.dart';
+import 'package:koguho/api_util.dart';
+import 'package:koguho/person.dart';
 import 'package:test/test.dart';
 
 void main() {

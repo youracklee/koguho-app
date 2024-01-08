@@ -1,10 +1,10 @@
 import 'package:camera/camera.dart';
-import 'package:ediya/camera_page.dart';
-import 'package:ediya/set_data.dart';
-import 'package:ediya/sp_helper.dart';
+import 'package:koguho/camera_page.dart';
+import 'package:koguho/set_data.dart';
+import 'package:koguho/sp_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:ediya/list_page.dart';
+import 'package:koguho/list_page.dart';
 import 'package:flutter/cupertino.dart';
 
 int pageIndex = 0;
