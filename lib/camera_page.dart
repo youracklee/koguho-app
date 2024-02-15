@@ -1,6 +1,7 @@
 import 'package:koguho/main.dart';
 import 'package:koguho/person.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:flutter/material.dart';
 
 import 'constant.dart';
 import 'sp_helper.dart';
@@ -51,6 +52,7 @@ class _CameraPageState extends State<CameraPage> {
   }
   Future<void> barcodeScanAndNavigate(Barcode barcode) async {
     final bar = barcode.rawValue.toString();
+    if (!mounted) return; // mounted 속성 확인
     if (widget.helper.contains(bar) && !canStartImageStream) {
       await _controller.stopImageStream();
       if (!mounted) return;
@@ -59,6 +61,7 @@ class _CameraPageState extends State<CameraPage> {
       );
     } else {
       getToast("등록되지 않은 바코드입니다.");
+      if (!mounted) return; // 상태 확인
       setState(() {});
     }
   }
@@ -135,7 +138,7 @@ class _CameraPageState extends State<CameraPage> {
       _textStream.clear();
     } else {
       if (bar.length == 8) {
-        getToast("등록되지 않은 바코드입니다.");
+        getToast("등록되지 않은 바코드입니다. 그리고 에러가 발생합니다.");
         if (!mounted) return;
         Navigator.push(
             context,
@@ -226,6 +229,7 @@ class TakePictureScreenState extends State<TakePictureScreen> {
   final int num = Random().nextInt(NUM_OF_IMAGES) + 1;
   bool isDisposed = false;
   bool isLoading = true;
+  int _countdown = 5; // 카운트다운을 위한 변수
 
   String imagePath(String barcode, String name) {
     var newFileName = "$name-${barcode}_${nowString()}.png";
@@ -243,6 +247,23 @@ class TakePictureScreenState extends State<TakePictureScreen> {
     GallerySaver.saveImage(temp.path, albumName: name);
     // await uploadImage(temp);
   }
+
+  String videoPath(String barcode, String name, String appendString) {
+    var newFileName = "$name-${barcode}_${nowString()}_$appendString.mp4";
+    return newFileName;
+  }
+
+  Future<void> saveVideoPath(XFile? tempVideo, String appendString) async {
+    if (tempVideo == null) return;
+    String name = widget.helper.getPersonName(widget.barcode);
+    String dir = (await getApplicationDocumentsDirectory()).path;
+    String newPath = join(dir, videoPath(widget.barcode, name, appendString));
+
+    File temp = await File(tempVideo.path).copy(newPath);
+    GallerySaver.saveVideo(temp.path, albumName: name);
+  }
+
+
 
   @override
   void initState() {
@@ -286,16 +307,57 @@ class TakePictureScreenState extends State<TakePictureScreen> {
             if (cnt > 50) {
               await _controller.stopImageStream();
               faceDetector.close();
+              if (!mounted) return; // 여기에 추가
+              getToast("5초 후 촬영이 시작됩니다.", gravity: ToastGravity.TOP);
+
+              // 여기서부터 촬영 시작
+              try {
+                // Start recording the video
+                final video = await _controller.startVideoRecording();
+                // Record for a fixed duration (e.g., 5 seconds)
+                OverlayEntry overlayEntry = createOverlayEntry();
+                Overlay.of(context)?.insert(overlayEntry);
+
+                // 카운트다운 시작
+                for (int i = 5; i > 0; i--) {
+                  setState(() {
+                  _countdown = i;
+                  });
+                  overlayEntry.markNeedsBuild();
+                  await Future.delayed(Duration(seconds: 1));
+                }
+                overlayEntry.remove();
+
+                // Stop the video recording
+                final recordedVideo = await _controller.stopVideoRecording();
+
+                // Get person information and update the recent shot date
+                Person tp = widget.helper.getPersonInfo(widget.barcode);
+                DateTime now = DateTime.now();
+                String date = DateTime(now.year, now.month, now.day).toString().split(" ")[0];
+                widget.helper.writeInfo(widget.barcode, tp);
+
+                // Save the recorded video
+                await saveVideoPath(recordedVideo, "front");
+              } catch (e) {
+                // Handle any errors
+                debugPrint(e.toString());
+              }
+
               takePicture();
+              recordVideoEnd(2, "end");
+              await Future.delayed(Duration(seconds: 3));
+
               getToast("촬영이 완료되었습니다.", size:50, gravity: ToastGravity.TOP, toastLength: Toast.LENGTH_LONG);
 
               if (!mounted) return;
               Navigator.of(context).pop();
+
             } else {
-              getToast(
-                "곧 촬영이 시작됩니다. 눈을 뜨고 약 1초간 기다려주세요.",
-                gravity: ToastGravity.TOP
-              );
+              // getToast(
+              //   "곧 촬영이 시작됩니다. 눈을 뜨고 약 1초간 기다려주세요.",
+              //   gravity: ToastGravity.TOP
+              // );
             }
           } else {
             getToast("정면을 똑바로 응시해주세요.");
@@ -356,7 +418,7 @@ class TakePictureScreenState extends State<TakePictureScreen> {
       DateTime now = DateTime.now();
       String date = DateTime(now.year, now.month, now.day).toString().split(" ")[0];
 
-      tp.recentShotDate = date;
+      // tp.recentShotDate = date;
       widget.helper.writeInfo(widget.barcode, tp);
       // 찍은 사진을 저장하기 위한 경로 생성
       saveImagePath(image);
@@ -365,6 +427,68 @@ class TakePictureScreenState extends State<TakePictureScreen> {
       debugPrint(e.toString());
     }
   }
+
+  void recordVideoFront(int duration, String appendString) async {
+    try {
+      // Start recording the video
+      final video = await _controller.startVideoRecording();
+      // Record for a fixed duration (e.g., 5 seconds)
+      await Future.delayed(Duration(seconds: duration));
+      // Stop the video recording
+      final recordedVideo = await _controller.stopVideoRecording();
+
+      // Get person information and update the recent shot date
+      Person tp = widget.helper.getPersonInfo(widget.barcode);
+      DateTime now = DateTime.now();
+      String date = DateTime(now.year, now.month, now.day).toString().split(" ")[0];
+      // tp.recentShotDate = date;
+      widget.helper.writeInfo(widget.barcode, tp);
+
+      // Save the recorded video
+      saveVideoPath(recordedVideo, appendString);
+    } catch (e) {
+      // Handle any errors
+      debugPrint(e.toString());
+    }
+  }
+
+   void recordVideoEnd(int duration, String appendString) async {
+    try {
+      // Start recording the video
+      final video = await _controller.startVideoRecording();
+      // Record for a fixed duration (e.g., 5 seconds)
+      await Future.delayed(Duration(seconds: duration));
+      // Stop the video recording
+      final recordedVideo = await _controller.stopVideoRecording();
+
+      // Get person information and update the recent shot date
+      Person tp = widget.helper.getPersonInfo(widget.barcode);
+      DateTime now = DateTime.now();
+      String date = DateTime(now.year, now.month, now.day).toString().split(" ")[0];
+      // tp.recentShotDate = date;
+      widget.helper.writeInfo(widget.barcode, tp);
+
+      // Save the recorded video
+      saveVideoPath(recordedVideo, appendString);
+    } catch (e) {
+      // Handle any errors
+      debugPrint(e.toString());
+    }
+  }
+
+  OverlayEntry createOverlayEntry() {
+  return OverlayEntry(
+    builder: (context) => Material(
+      color: Colors.white, 
+      child: Center(
+      child: Text(
+        '$_countdown',
+        style: TextStyle(fontSize: 300, fontWeight: FontWeight.bold, color: Color.fromRGBO(7, 77, 255, 1)),
+      ),
+    ),
+  ),
+  );
+}
 
   @override
   void dispose() {
@@ -415,13 +539,15 @@ class _DummyState extends State<Dummy> {
   @override
   void initState() {
     super.initState();
-    const oneSec = Duration(milliseconds: 500);
-    Timer.periodic(
-      oneSec,
-        (_) {
-          Navigator.of(context).pop();
-        }
-    );
+
+    // 500 밀리초 후에 한 번만 실행되도록 Timer를 수정합니다.
+    Timer(Duration(milliseconds: 500), () {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    });
+
+
   }
 
   @override

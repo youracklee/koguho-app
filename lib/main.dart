@@ -7,7 +7,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:koguho/list_page.dart';
 import 'package:flutter/cupertino.dart';
 
-int pageIndex = 0;
+int pageIndex = 1;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -73,12 +73,14 @@ class _MainPageState extends State<MainPage> {
       tabBuilder: (context, index) {
         pageIndex = _controller.index;
         switch(index) {
+          case 0:
+            return CameraPage(widget.camera, helper);
           case 1:
             return SetData(helper);
           case 2:
             return ListPage(helper);
           default:
-            return CameraPage(widget.camera, helper);
+            return SetData(helper);
         }
       },
     );
